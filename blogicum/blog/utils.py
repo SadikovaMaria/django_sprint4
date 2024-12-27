@@ -15,6 +15,20 @@ def posts_pagination(request, posts):
     return paginator.get_page(page_number)
 
 
+def filter_published_posts(queryset=None):
+    if queryset is None:
+        queryset = Post.objects.all()
+    return queryset.filter(
+        is_published=True,
+        pub_date__lt=timezone.now(),
+        category__is_published=True
+    )
+
+
+def annotate_with_comment_count(queryset):
+    return queryset.annotate(comment_count=Count('comments'))
+
+
 def query_post(
         manager=Post.objects,
         filters=True,
@@ -22,11 +36,7 @@ def query_post(
 ):
     queryset = manager.select_related('author', 'location', 'category')
     if filters:
-        queryset = queryset.filter(
-            is_published=True,
-            pub_date__lt=timezone.now(),
-            category__is_published=True
-        )
+        queryset = filter_published_posts(queryset)
     if with_comments:
-        queryset = queryset.annotate(comment_count=Count('comments'))
+        queryset = annotate_with_comment_count(queryset)
     return queryset.order_by('-pub_date')
